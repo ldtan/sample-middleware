@@ -83,6 +83,7 @@ def get_data():
 
     except Exception as e:
         logging.error("Middleware error.")
+        logging.error(str(e))
         abort(500)
 
 
