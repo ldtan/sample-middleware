@@ -1,0 +1,4 @@
+*.pyc
+app/lib/
+development/
+venvflask/
