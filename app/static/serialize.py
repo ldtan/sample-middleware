@@ -4,76 +4,140 @@ OBJECT = 'self'
 
 class Serializer(object):
     
+    __serializer__ = 'Serializer'
+
+    
     def __init__(self, *args, **kwargs):
-        if len(args) == 1:
-            try:
-                for k, v in args[0].__dict__.iteritems():
-                    if callable(v) or k[0:2] == '__':
-                        continue
+        cls = self.__class__
 
-                    try:
-                        v = Serializer(v)
+        str_kwargs = ''.join([
+            '{}={},'.format(k, v)
+            for k, v in kwargs.iteritems()
+        ])
+        exec('super(cls, self).__init__({})')
 
-                    except:
-                        v = v
+        for k, v in kwargs.iteritems():
+            if k in self.__dict__:
+                continue
 
-                    exec('self.{} = v'.format(k))
-
-            except AttributeError as e:
-                pass
-
-        elif len(kwargs) > 1:
-            for k, v in kwargs.iteritems():
-                exec('self.{} = v'.format(k))
+            exec('self.{} = v'.format(k))
     
     
-    def __getVariables__(self, instance):
+    def validate_identifier(self, identifier):
+        return identifier[0:2] != '__' if identifier else False
+
+
+    def validate_value(self, value):
+        return not callable(value) if value else True
+    
+    
+    def __getvariables__(self, instance):
         variables = {}
 
         if OBJECT in instance:
             variables.update({
                 k: v for k, v in self.__dict__.iteritems()
-                if not callable(v) and not k[0:2] == '__'
+                if self.validate_value(v) and
+                self.validate_identifier(k)
             })
 
         if CLASS in instance:
             variables.update({
-                'class_' + k if k in variables else k:
-                v for k, v in self.__class__.__dict__.iteritems()
-                if not callable(v) and not k[0:2] == '__'
+                'class_' + k if k in variables else k: v
+                for k, v in self.__class__.__dict__.iteritems()
+                if self.validate_value(v) and
+                self.validate_identifier(k)
             })
-
+        
         return variables
 
 
     def serialize(self, instance=[OBJECT, CLASS], include=None, exclude=None):
         return {
-            k: v.serialize() if isinstance(v, Serializer) else v
-            for k, v in self.__getVariables__(instance).iteritems()
-            if not include and not exclude or
-            not exclude and k in include or
-            not include and not k in exclude
+            self.__serializer__ : {
+                k: v.serialize() if isinstance(v, Serializer) else v
+                for k, v in self.__getvariables__(instance).iteritems()
+                if not include and not exclude or
+                not exclude and k in include or
+                not include and not k in exclude
+            }
         }
 
 
-# Main
-class Sample(Serializer, list):
+def serialize(value=None, instance=[CLASS, OBJECT]):
+    if not value:
+        return {}
 
-    id = 100
+    serialized = {}
+
+    if OBJECT in instance:
+        try:
+            for k, v in value.__dict__.iteritems():
+                if callable(v) or k[0:2] == '__':
+                    continue
+
+                s = (v.serialize() if isinstance(v, Serializer) else
+                     serialize(v, instance=[OBJECT]))
+
+                serialized.update({
+                    'class_' + k if k in serialized else k:
+                    s if len(s) > 0 else v})
+
+        except Exception as e:
+            i = 0
+
+    if CLASS in instance:
+        try:
+            for k, v in value.__class__.__dict__.iteritems():
+                if callable(v) or k[0:2] == '__':
+                    continue
+                
+                s = (v.serialize() if isinstance(v, Serializer) else
+                     serialize(v, instance=[OBJECT]))
+
+                serialized.update({
+                    'class_' + k if k in serialized else k:
+                    s if len(s) > 0 else v})
+
+        except Exception as e:
+            i = 1
+
+    return serialized
+
+
+# Main
+class Parent(object):
+
+    var = 5
     
     def __init__(self):
-        super(self.__class__, self).__init__(data=None)
         self.id = 0
-        self.name = 'Liel'
-        self.serial = Serializer(age=20, city='Quezon City')
+        self.age = 20
 
 
-# s = Sample()
-# print s.__dict__
-# print isinstance(long, object)
+class Child(Parent):
 
-# for k, v in s.serialize().iteritems():
-#     print k, '=', v
+    def __init__(self):
+        cls = self.__class__
+        super(cls, self).__init__()
+        self.name = 'Tan'
+
+
+print serialize(Child())
+print Child.var
+print Serializer(id=0, name='Tan').serialize()
+print Child().id
+
+# print list.__dict__
+# print serialize(key='i', value=i)
+
+# import requests
+
+# class Response(requests.Response, Serializer):
+#     pass
+
+# del Response
+# print Response
 
 '''
 # class Serializer(object):

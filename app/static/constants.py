@@ -1,4 +1,4 @@
-from flask import jsonify
+from serialize import Serializer
 
 
 MICROSERVICE_URL = 'http://10.237.158.163:8080'
@@ -10,4 +10,12 @@ PRIMITIVE_TYPES = (
     str, bytes, bytearray,
     list, tuple, set,
     dict
+)
+
+REQUEST_METHODS = (
+    'POST',
+    'GET',
+    'PUT',
+    'DELETE',
+    'OPTION'
 )
